@@ -1,6 +1,6 @@
 // @flow
 
-import { RTCPeerConnection as PC } from 'react-native-webrtc';
+import { RTCPeerConnection as PC } from 'react-native-webrtc-iristick-glasses';
 
 import { synthesizeIPv6Addresses } from './ipv6utils';
 

@@ -5,7 +5,7 @@ import {
     RTCSessionDescription,
     mediaDevices,
     permissions
-} from 'react-native-webrtc';
+} from 'react-native-webrtc-iristick-glasses';
 
 import RTCPeerConnection from './RTCPeerConnection';
 

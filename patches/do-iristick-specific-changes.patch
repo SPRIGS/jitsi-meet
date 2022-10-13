@@ -1,0 +1,175 @@
+diff --git a/android/settings.gradle b/android/settings.gradle
+index d54b52ee2..b9bb160bd 100644
+--- a/android/settings.gradle
++++ b/android/settings.gradle
+@@ -53,7 +53,7 @@ include ':react-native-svg'
+ project(':react-native-svg').projectDir = new File(rootProject.projectDir, 	'../node_modules/react-native-svg/android')
+ include ':react-native-video'
+ project(':react-native-video').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-video/android')
+-include ':react-native-webrtc'
+-project(':react-native-webrtc').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-webrtc/android')
++include ':react-native-webrtc-iristick-glasses'
++project(':react-native-webrtc-iristick-glasses').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-webrtc-iristick-glasses/android')
+ include ':react-native-webview'
+ project(':react-native-webview').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-webview/android')
+diff --git a/package-lock.json b/package-lock.json
+index 9b129edad..f02f81c15 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -114,7 +114,7 @@
+         "react-native-url-polyfill": "1.3.0",
+         "react-native-video": "https://git@github.com/react-native-video/react-native-video#7c48ae7c8544b2b537fb60194e9620b9fcceae52",
+         "react-native-watch-connectivity": "1.0.11",
+-        "react-native-webrtc": "1.106.1",
++        "react-native-webrtc-iristick-glasses": "^1.0.0",
+         "react-native-webview": "11.15.1",
+         "react-native-youtube-iframe": "2.2.1",
+         "react-redux": "7.1.0",
+@@ -16483,6 +16483,52 @@
+         "react-native": ">=0.60.0"
+       }
+     },
++    "node_modules/react-native-webrtc-iristick-glasses": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/react-native-webrtc-iristick-glasses/-/react-native-webrtc-iristick-glasses-1.0.0.tgz",
++      "integrity": "sha512-AtNpgA+4JVijFdXqtxEVVz7mDqXFxq0taaIgK6Ohf1YpDU4OhHL4rxgvuSdXfyboLz9OOUyB8K7fQapLMg6gPw==",
++      "hasInstallScript": true,
++      "dependencies": {
++        "base64-js": "1.5.1",
++        "event-target-shim": "6.0.2",
++        "react-native": ">=0.60.0",
++        "react-native-webrtc": "^1.100.1",
++        "tar": "6.1.11"
++      },
++      "peerDependencies": {
++        "react-native": ">=0.60.0"
++      }
++    },
++    "node_modules/react-native-webrtc-iristick-glasses/node_modules/base64-js": {
++      "version": "1.5.1",
++      "resolved": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
++      "integrity": "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==",
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/feross"
++        },
++        {
++          "type": "patreon",
++          "url": "https://www.patreon.com/feross"
++        },
++        {
++          "type": "consulting",
++          "url": "https://feross.org/support"
++        }
++      ]
++    },
++    "node_modules/react-native-webrtc-iristick-glasses/node_modules/event-target-shim": {
++      "version": "6.0.2",
++      "resolved": "https://registry.npmjs.org/event-target-shim/-/event-target-shim-6.0.2.tgz",
++      "integrity": "sha512-8q3LsZjRezbFZ2PN+uP+Q7pnHUMmAOziU2vA2OwoFaKIXxlxl38IylhSSgUorWu/rf4er67w0ikBqjBFk/pomA==",
++      "engines": {
++        "node": ">=10.13.0"
++      },
++      "funding": {
++        "url": "https://github.com/sponsors/mysticatea"
++      }
++    },
+     "node_modules/react-native-webrtc/node_modules/base64-js": {
+       "version": "1.5.1",
+       "resolved": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
+@@ -32769,6 +32815,30 @@
+         }
+       }
+     },
++    "react-native-webrtc-iristick-glasses": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/react-native-webrtc-iristick-glasses/-/react-native-webrtc-iristick-glasses-1.0.0.tgz",
++      "integrity": "sha512-AtNpgA+4JVijFdXqtxEVVz7mDqXFxq0taaIgK6Ohf1YpDU4OhHL4rxgvuSdXfyboLz9OOUyB8K7fQapLMg6gPw==",
++      "requires": {
++        "base64-js": "1.5.1",
++        "event-target-shim": "6.0.2",
++        "react-native": ">=0.60.0",
++        "react-native-webrtc": "^1.100.1",
++        "tar": "6.1.11"
++      },
++      "dependencies": {
++        "base64-js": {
++          "version": "1.5.1",
++          "resolved": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
++          "integrity": "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA=="
++        },
++        "event-target-shim": {
++          "version": "6.0.2",
++          "resolved": "https://registry.npmjs.org/event-target-shim/-/event-target-shim-6.0.2.tgz",
++          "integrity": "sha512-8q3LsZjRezbFZ2PN+uP+Q7pnHUMmAOziU2vA2OwoFaKIXxlxl38IylhSSgUorWu/rf4er67w0ikBqjBFk/pomA=="
++        }
++      }
++    },
+     "react-native-webview": {
+       "version": "11.15.1",
+       "resolved": "https://registry.npmjs.org/react-native-webview/-/react-native-webview-11.15.1.tgz",
+diff --git a/package.json b/package.json
+index 7c9368444..c792ffc3e 100644
+--- a/package.json
++++ b/package.json
+@@ -119,7 +119,7 @@
+     "react-native-url-polyfill": "1.3.0",
+     "react-native-video": "https://git@github.com/react-native-video/react-native-video#7c48ae7c8544b2b537fb60194e9620b9fcceae52",
+     "react-native-watch-connectivity": "1.0.11",
+-    "react-native-webrtc": "1.106.1",
++    "react-native-webrtc-iristick-glasses": "^1.0.0",
+     "react-native-webview": "11.15.1",
+     "react-native-youtube-iframe": "2.2.1",
+     "react-redux": "7.1.0",
+diff --git a/react/features/base/media/components/native/Video.js b/react/features/base/media/components/native/Video.js
+index 6f84378dd..54d17a675 100644
+--- a/react/features/base/media/components/native/Video.js
++++ b/react/features/base/media/components/native/Video.js
+@@ -1,7 +1,7 @@
+ // @flow
+ 
+ import React, { Component } from 'react';
+-import { RTCView } from 'react-native-webrtc';
++import { RTCView } from 'react-native-webrtc-iristick-glasses';
+ 
+ import { Pressable } from '../../../react';
+ 
+diff --git a/react/features/mobile/polyfills/RTCPeerConnection.js b/react/features/mobile/polyfills/RTCPeerConnection.js
+index 55ade67a4..fcb9f767a 100644
+--- a/react/features/mobile/polyfills/RTCPeerConnection.js
++++ b/react/features/mobile/polyfills/RTCPeerConnection.js
+@@ -1,6 +1,6 @@
+ // @flow
+ 
+-import { RTCPeerConnection as PC } from 'react-native-webrtc';
++import { RTCPeerConnection as PC } from 'react-native-webrtc-iristick-glasses';
+ 
+ import { synthesizeIPv6Addresses } from './ipv6utils';
+ 
+diff --git a/react/features/mobile/polyfills/ipv6utils.js b/react/features/mobile/polyfills/ipv6utils.js
+index ee063b485..383cd76b0 100644
+--- a/react/features/mobile/polyfills/ipv6utils.js
++++ b/react/features/mobile/polyfills/ipv6utils.js
+@@ -1,7 +1,7 @@
+ // @flow
+ 
+ import { NativeModules } from 'react-native';
+-import { RTCSessionDescription } from 'react-native-webrtc';
++import { RTCSessionDescription } from 'react-native-webrtc-iristick-glasses';
+ 
+ /**
+  * Synthesizes IPv6 addresses on iOS in order to support IPv6 NAT64 networks.
+diff --git a/react/features/mobile/polyfills/webrtc.js b/react/features/mobile/polyfills/webrtc.js
+index 2186f03a7..d7a07a134 100644
+--- a/react/features/mobile/polyfills/webrtc.js
++++ b/react/features/mobile/polyfills/webrtc.js
+@@ -5,7 +5,7 @@ import {
+     RTCSessionDescription,
+     mediaDevices,
+     permissions
+-} from 'react-native-webrtc';
++} from 'react-native-webrtc-iristick-glasses';
+ 
+ import RTCPeerConnection from './RTCPeerConnection';
+ 
