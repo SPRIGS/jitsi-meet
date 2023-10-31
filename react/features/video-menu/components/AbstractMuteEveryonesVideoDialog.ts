@@ -1,35 +1,31 @@
-import { WithTranslation } from 'react-i18next';
-
-import { IState } from '../../app/types';
+import { IReduxState } from '../../app/types';
 import { requestDisableVideoModeration, requestEnableVideoModeration } from '../../av-moderation/actions';
 import { isEnabledFromState, isSupported } from '../../av-moderation/functions';
 import { MEDIA_TYPE } from '../../base/media/constants';
 import { getLocalParticipant, getParticipantDisplayName } from '../../base/participants/functions';
-// eslint-disable-next-line lines-around-comment
-// @ts-ignore
 import { muteAllParticipants } from '../actions';
 
 import AbstractMuteRemoteParticipantsVideoDialog, {
-    type Props as AbstractProps
+    type IProps as AbstractProps
 } from './AbstractMuteRemoteParticipantsVideoDialog';
 
 /**
  * The type of the React {@code Component} props of
  * {@link AbstractMuteEveryonesVideoDialog}.
  */
-export type Props = AbstractProps & WithTranslation & {
-    content: string;
+export interface IProps extends AbstractProps {
+    content?: string;
     exclude: Array<string>;
-    isModerationSupported: boolean;
-    isVideoModerationEnabled: boolean;
+    isModerationSupported?: boolean;
+    isVideoModerationEnabled?: boolean;
     showAdvancedModerationToggle: boolean;
     title: string;
-};
+}
 
-type State = {
+interface IState {
     content: string;
-    moderationEnabled: boolean;
-};
+    moderationEnabled?: boolean;
+}
 
 /**
  *
@@ -38,8 +34,8 @@ type State = {
  *
  * @augments AbstractMuteRemoteParticipantsVideoDialog
  */
-export default class AbstractMuteEveryonesVideoDialog<P extends Props>
-    extends AbstractMuteRemoteParticipantsVideoDialog<P, State> {
+export default class AbstractMuteEveryonesVideoDialog<P extends IProps>
+    extends AbstractMuteRemoteParticipantsVideoDialog<P, IState> {
     static defaultProps = {
         exclude: [],
         muteLocal: false
@@ -107,11 +103,11 @@ export default class AbstractMuteEveryonesVideoDialog<P extends Props>
 /**
  * Maps (parts of) the Redux state to the associated {@code AbstractMuteEveryonesVideoDialog}'s props.
  *
- * @param {IState} state - The redux state.
+ * @param {IReduxState} state - The redux state.
  * @param {Object} ownProps - The properties explicitly passed to the component.
- * @returns {Props}
+ * @returns {IProps}
  */
-export function abstractMapStateToProps(state: IState, ownProps: Props) {
+export function abstractMapStateToProps(state: IReduxState, ownProps: IProps) {
     const { exclude = [], t } = ownProps;
     const isVideoModerationEnabled = isEnabledFromState(MEDIA_TYPE.VIDEO, state);
 

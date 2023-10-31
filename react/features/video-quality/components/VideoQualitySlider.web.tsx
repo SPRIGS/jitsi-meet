@@ -3,23 +3,21 @@ import { withStyles } from '@mui/styles';
 import clsx from 'clsx';
 import React, { Component } from 'react';
 import { WithTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
 
 import { createToolbarEvent } from '../../analytics/AnalyticsEvents';
 import { sendAnalytics } from '../../analytics/functions';
-import { IState, IStore } from '../../app/types';
+import { IReduxState, IStore } from '../../app/types';
 import { setAudioOnly } from '../../base/audio-only/actions';
 import { translate } from '../../base/i18n/functions';
 import { setLastN } from '../../base/lastn/actions';
 import { getLastNForQualityLevel } from '../../base/lastn/functions';
-import { connect } from '../../base/redux/functions';
 import { withPixelLineHeight } from '../../base/styles/functions.web';
-// eslint-disable-next-line lines-around-comment
-// @ts-ignore
 import { setPreferredVideoQuality } from '../actions';
 import { DEFAULT_LAST_N, VIDEO_QUALITY_LEVELS } from '../constants';
 import logger from '../logger';
 
-import Slider from './Slider';
+import Slider from './Slider.web';
 
 const {
     ULTRA,
@@ -47,7 +45,7 @@ const createEvent = function(quality: string) {
 /**
  * The type of the React {@code Component} props of {@link VideoQualitySlider}.
  */
-interface Props extends WithTranslation {
+interface IProps extends WithTranslation {
 
     /**
      * Whether or not the conference is in audio only mode.
@@ -57,12 +55,12 @@ interface Props extends WithTranslation {
     /**
      * The channelLastN value configured for the conference.
      */
-    _channelLastN: number;
+    _channelLastN?: number;
 
     /**
      * Whether or not the conference is in peer to peer mode.
      */
-    _p2p: Boolean;
+    _p2p?: Object;
 
     /**
      * The currently configured maximum quality resolution to be sent and
@@ -118,8 +116,13 @@ const styles = (theme: Theme) => {
  *
  * @augments Component
  */
-class VideoQualitySlider extends Component<Props> {
-    _sliderOptions: Array<Object>;
+class VideoQualitySlider extends Component<IProps> {
+    _sliderOptions: Array<{
+        audioOnly?: boolean;
+        onSelect: Function;
+        textKey: string;
+        videoQuality?: number;
+    }>;
 
     /**
      * Initializes a new {@code VideoQualitySlider} instance.
@@ -127,7 +130,7 @@ class VideoQualitySlider extends Component<Props> {
      * @param {Object} props - The read-only React Component props with which
      * the new instance is to be initialized.
      */
-    constructor(props: Props) {
+    constructor(props: IProps) {
         super(props);
 
         // Bind event handlers so they are only bound once for every instance.
@@ -184,9 +187,15 @@ class VideoQualitySlider extends Component<Props> {
 
         return (
             <div className = { clsx('video-quality-dialog', classes.dialog) }>
-                <div className = { classes.dialogDetails }>{t('videoStatus.adjustFor')}</div>
+                <div
+                    aria-hidden = { true }
+                    className = { classes.dialogDetails }>
+                    {t('videoStatus.adjustFor')}
+                </div>
                 <div className = { classes.dialogContents }>
-                    <div className = { classes.sliderDescription }>
+                    <div
+                        aria-hidden = { true }
+                        className = { classes.sliderDescription }>
                         <span>{t('videoStatus.bestPerformance')}</span>
                         <span>{t('videoStatus.highestQuality')}</span>
                     </div>
@@ -280,15 +289,14 @@ class VideoQualitySlider extends Component<Props> {
 
         if (_audioOnly) {
             const audioOnlyOption = _sliderOptions.find(
-                ({ audioOnly }: any) => audioOnly);
+                ({ audioOnly }) => audioOnly);
 
             // @ts-ignore
             return _sliderOptions.indexOf(audioOnlyOption);
         }
 
         for (let i = 0; i < _sliderOptions.length; i++) {
-            // @ts-ignore
-            if (_sliderOptions[i].videoQuality >= _sendrecvVideoQuality) {
+            if (Number(_sliderOptions[i].videoQuality) >= _sendrecvVideoQuality) {
                 return i;
             }
         }
@@ -358,9 +366,9 @@ class VideoQualitySlider extends Component<Props> {
  *
  * @param {Object} state - The Redux state.
  * @private
- * @returns {Props}
+ * @returns {IProps}
  */
-function _mapStateToProps(state: IState) {
+function _mapStateToProps(state: IReduxState) {
     const { enabled: audioOnly } = state['features/base/audio-only'];
     const { p2p } = state['features/base/conference'];
     const { preferredVideoQuality } = state['features/video-quality'];

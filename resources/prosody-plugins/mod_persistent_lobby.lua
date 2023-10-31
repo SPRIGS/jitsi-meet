@@ -84,12 +84,10 @@ local function has_persistent_lobby(room)
 end
 
 
--- Helper method to trigger main room destroy if room is persistent (no auto-delete) and destroy not yet triggered
+-- Helper method to trigger main room destroy
 local function trigger_room_destroy(room)
-    if room.get_persistent(room) and room._data.room_destroy_triggered == nil then
-        room._data.room_destroy_triggered = true;
-        main_muc_module:fire_event("muc-room-destroyed", { room = room; });
-    end
+    room:set_persistent(false);
+    room:destroy(nil, 'main room and lobby now empty');
 end
 
 
@@ -146,7 +144,7 @@ run_when_component_loaded(lobby_muc_component_host, function(host_module, host_n
             local lobby_room = event.room;
             local main_room = lobby_room.main_room;
 
-            if is_healthcheck_room(main_room.jid) or not has_persistent_lobby(main_room) then
+            if not main_room or is_healthcheck_room(main_room.jid) or not has_persistent_lobby(main_room) then
                 return;
             end
 
@@ -163,7 +161,7 @@ end);
 
 function handle_create_persistent_lobby(event)
     local room = event.room;
-    prosody.events.fire_event("create-lobby-room", { room = room; });
+    prosody.events.fire_event("create-lobby-room", event);
 
     set_persistent_lobby(room);
     room:set_persistent(true);

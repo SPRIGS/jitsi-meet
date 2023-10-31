@@ -8,7 +8,7 @@ import { LOCKED_LOCALLY } from '../../../../room-lock/constants';
 /**
  * The type of the React {@code Component} props of {@link PasswordForm}.
  */
-interface Props extends WithTranslation {
+interface IProps extends WithTranslation {
 
     /**
      * Whether or not to show the password editing field.
@@ -19,7 +19,7 @@ interface Props extends WithTranslation {
      * The value for how the conference is locked (or undefined if not locked)
      * as defined by room-lock constants.
      */
-    locked: string;
+    locked?: string;
 
     /**
      * Callback to invoke when the local participant is submitting a password
@@ -30,7 +30,7 @@ interface Props extends WithTranslation {
     /**
      * The current known password for the JitsiConference.
      */
-    password: string;
+    password?: string;
 
     /**
      * The number of digits to be used in the password.
@@ -46,26 +46,26 @@ interface Props extends WithTranslation {
 /**
  * The type of the React {@code Component} state of {@link PasswordForm}.
  */
-type State = {
+interface IState {
 
     /**
      * The value of the password being entered by the local participant.
      */
     enteredPassword: string;
-};
+}
 
 /**
  * React {@code Component} for displaying and editing the conference password.
  *
  * @augments Component
  */
-class PasswordForm extends Component<Props, State> {
+class PasswordForm extends Component<IProps, IState> {
     /**
      * Implements React's {@link Component#getDerivedStateFromProps()}.
      *
      * @inheritdoc
      */
-    static getDerivedStateFromProps(props: Props, state: State) {
+    static getDerivedStateFromProps(props: IProps, state: IState) {
         return {
             enteredPassword: props.editEnabled ? state.enteredPassword : ''
         };
@@ -78,10 +78,10 @@ class PasswordForm extends Component<Props, State> {
     /**
      * Initializes a new {@code PasswordForm} instance.
      *
-     * @param {Props} props - The React {@code Component} props to initialize
+     * @param {IProps} props - The React {@code Component} props to initialize
      * the new {@code PasswordForm} instance with.
      */
-    constructor(props: Props) {
+    constructor(props: IProps) {
         super(props);
 
         // Bind event handlers so they are only bound once per instance.
@@ -140,22 +140,29 @@ class PasswordForm extends Component<Props, State> {
      * @returns {ReactElement}
      */
     _renderPasswordField() {
-        if (this.props.editEnabled) {
-            let placeHolderText = this.props.t('dialog.password');
+        const {
+            editEnabled,
+            passwordNumberOfDigits,
+            t
+        } = this.props;
 
-            if (this.props.passwordNumberOfDigits) {
+        if (editEnabled) {
+            let placeHolderText = t('dialog.password');
+
+            if (passwordNumberOfDigits) {
                 placeHolderText = this.props.t('passwordDigitsOnly', {
-                    number: this.props.passwordNumberOfDigits });
+                    number: passwordNumberOfDigits });
             }
 
             return (
                 <div
                     className = 'info-password-form'>
                     <Input
-                        accessibilityLabel = { this.props.t('info.addPassword') }
+                        accessibilityLabel = { t('info.addPassword') }
                         autoFocus = { true }
                         id = 'info-password-input'
-                        maxLength = { this.props.passwordNumberOfDigits }
+                        maxLength = { passwordNumberOfDigits }
+                        mode = { passwordNumberOfDigits ? 'numeric' : undefined }
                         onChange = { this._onEnteredPasswordChange }
                         onKeyPress = { this._onKeyPress }
                         placeholder = { placeHolderText }

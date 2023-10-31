@@ -1,12 +1,11 @@
 import { batch } from 'react-redux';
+import { AnyAction } from 'redux';
 
 import { createReactionSoundsDisabledEvent } from '../analytics/AnalyticsEvents';
 import { sendAnalytics } from '../analytics/functions';
 import { IStore } from '../app/types';
 import { APP_WILL_MOUNT, APP_WILL_UNMOUNT } from '../base/app/actionTypes';
 import { CONFERENCE_JOIN_IN_PROGRESS, SET_START_REACTIONS_MUTED } from '../base/conference/actionTypes';
-// eslint-disable-next-line lines-around-comment
-// @ts-ignore
 import { setStartReactionsMuted } from '../base/conference/actions';
 import {
     getParticipantById,
@@ -30,16 +29,16 @@ import {
 } from './actionTypes';
 import {
     addReactionsToChat,
+    displayReactionSoundsNotification,
     flushReactionBuffer,
     pushReactions,
     sendReactions,
     setReactionQueue
-} from './actions.any';
-import { displayReactionSoundsNotification } from './actions.web';
+} from './actions';
 import {
     ENDPOINT_REACTION_NAME,
+    IMuteCommandAttributes,
     MUTE_REACTIONS_COMMAND,
-    MuteCommandAttributes,
     RAISE_HAND_SOUND_ID,
     REACTIONS,
     REACTION_SOUND,
@@ -61,7 +60,7 @@ import { RAISE_HAND_SOUND_FILE } from './sounds';
  * @param {IStore} store - The redux store.
  * @returns {Function}
  */
-MiddlewareRegistry.register((store: IStore) => (next: Function) => (action: any) => {
+MiddlewareRegistry.register((store: IStore) => (next: Function) => (action: AnyAction) => {
     const { dispatch, getState } = store;
 
     switch (action.type) {
@@ -109,7 +108,7 @@ MiddlewareRegistry.register((store: IStore) => (next: Function) => (action: any)
         const { conference } = action;
 
         conference.addCommandListener(
-            MUTE_REACTIONS_COMMAND, ({ attributes }: { attributes: MuteCommandAttributes; }, id: any) => {
+            MUTE_REACTIONS_COMMAND, ({ attributes }: { attributes: IMuteCommandAttributes; }, id: any) => {
                 _onMuteReactionsCommand(attributes, id, store);
             });
         break;
@@ -235,7 +234,7 @@ MiddlewareRegistry.register((store: IStore) => (next: Function) => (action: any)
  * @private
  * @returns {void}
  */
-function _onMuteReactionsCommand(attributes: MuteCommandAttributes = {}, id: string, store: IStore) {
+function _onMuteReactionsCommand(attributes: IMuteCommandAttributes = {}, id: string, store: IStore) {
     const state = store.getState();
 
     // We require to know who issued the command because (1) only a
@@ -261,7 +260,6 @@ function _onMuteReactionsCommand(attributes: MuteCommandAttributes = {}, id: str
 
     const oldState = Boolean(state['features/base/conference'].startReactionsMuted);
 
-    // @ts-ignore
     const newState = attributes.startReactionsMuted === 'true';
 
     if (oldState !== newState) {

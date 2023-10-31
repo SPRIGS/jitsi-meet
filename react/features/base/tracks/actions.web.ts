@@ -1,85 +1,68 @@
-/* eslint-disable lines-around-comment */
-// @ts-ignore
+// @ts-expect-error
 import { AUDIO_ONLY_SCREEN_SHARE_NO_TRACK } from '../../../../modules/UI/UIErrors';
-import { IState, IStore } from '../../app/types';
+import { IReduxState, IStore } from '../../app/types';
 import { showModeratedNotification } from '../../av-moderation/actions';
 import { shouldShowModeratedNotification } from '../../av-moderation/functions';
 import { setNoiseSuppressionEnabled } from '../../noise-suppression/actions';
 import { showNotification } from '../../notifications/actions';
 import { NOTIFICATION_TIMEOUT_TYPE } from '../../notifications/constants';
-import { isModerationNotificationDisplayed } from '../../notifications/functions';
-// @ts-ignore
 import { stopReceiver } from '../../remote-control/actions';
-// @ts-ignore
 import { setScreenAudioShareState, setScreenshareAudioTrack } from '../../screen-share/actions';
 import { isAudioOnlySharing, isScreenVideoShared } from '../../screen-share/functions';
-// @ts-ignore
-import { isScreenshotCaptureEnabled, toggleScreenshotCaptureSummary } from '../../screenshot-capture';
-// @ts-ignore
+import { toggleScreenshotCaptureSummary } from '../../screenshot-capture/actions';
+import { isScreenshotCaptureEnabled } from '../../screenshot-capture/functions';
 import { AudioMixerEffect } from '../../stream-effects/audio-mixer/AudioMixerEffect';
-import { setAudioOnly } from '../audio-only/actions';
 import { getCurrentConference } from '../conference/functions';
-import { getMultipleVideoSendingSupportFeatureFlag } from '../config/functions.any';
+import { openDialog } from '../dialog/actions';
 import { JitsiTrackErrors, JitsiTrackEvents } from '../lib-jitsi-meet';
 import { setScreenshareMuted } from '../media/actions';
 import { MEDIA_TYPE, VIDEO_TYPE } from '../media/constants';
-/* eslint-enable lines-around-comment */
 
 import {
     addLocalTrack,
-    replaceLocalTrack
+    replaceLocalTrack,
+    toggleCamera
 } from './actions.any';
+import AllowToggleCameraDialog from './components/web/AllowToggleCameraDialog';
 import {
     createLocalTracksF,
     getLocalDesktopTrack,
-    getLocalJitsiAudioTrack
+    getLocalJitsiAudioTrack,
+    getLocalVideoTrack,
+    isToggleCameraEnabled
 } from './functions';
-import { ShareOptions, ToggleScreenSharingOptions } from './types';
+import { IShareOptions, IToggleScreenSharingOptions } from './types';
 
 export * from './actions.any';
-
-declare const APP: any;
 
 /**
  * Signals that the local participant is ending screensharing or beginning the screensharing flow.
  *
  * @param {boolean} enabled - The state to toggle screen sharing to.
  * @param {boolean} audioOnly - Only share system audio.
- * @param {boolean} ignoreDidHaveVideo - Whether or not to ignore if video was on when sharing started.
  * @param {Object} shareOptions - The options to be passed for capturing screenshare.
  * @returns {Function}
  */
 export function toggleScreensharing(
         enabled?: boolean,
         audioOnly = false,
-        ignoreDidHaveVideo = false,
-        shareOptions: ShareOptions = {}) {
+        shareOptions: IShareOptions = {}) {
     return (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         // check for A/V Moderation when trying to start screen sharing
-        if ((enabled || enabled === undefined)
-            && shouldShowModeratedNotification(MEDIA_TYPE.VIDEO, getState())) {
-            if (!isModerationNotificationDisplayed(MEDIA_TYPE.PRESENTER, getState())) {
-                dispatch(showModeratedNotification(MEDIA_TYPE.PRESENTER));
-            }
+        if ((enabled || enabled === undefined) && shouldShowModeratedNotification(MEDIA_TYPE.VIDEO, getState())) {
+            dispatch(showModeratedNotification(MEDIA_TYPE.SCREENSHARE));
 
             return Promise.reject();
         }
 
-        if (getMultipleVideoSendingSupportFeatureFlag(getState())) {
-            return _toggleScreenSharing({
-                enabled,
-                audioOnly,
-                shareOptions
-            }, {
-                dispatch,
-                getState
-            });
-        }
-
-        return APP.conference.toggleScreenSharing(enabled, {
+        return _toggleScreenSharing({
+            enabled,
             audioOnly,
-            desktopStream: shareOptions?.desktopStream
-        }, ignoreDidHaveVideo);
+            shareOptions
+        }, {
+            dispatch,
+            getState
+        });
     };
 }
 
@@ -129,7 +112,7 @@ function _handleScreensharingError(
  * @param {*} state - The redux state.
  * @returns {void}
  */
-async function _maybeApplyAudioMixerEffect(desktopAudioTrack: any, state: IState): Promise<void> {
+async function _maybeApplyAudioMixerEffect(desktopAudioTrack: any, state: IReduxState): Promise<void> {
     const localAudio = getLocalJitsiAudioTrack(state);
     const conference = getCurrentConference(state);
 
@@ -141,7 +124,7 @@ async function _maybeApplyAudioMixerEffect(desktopAudioTrack: any, state: IState
     } else {
         // If no local stream is present ( i.e. no input audio devices) we use the screen share audio
         // stream as we would use a regular stream.
-        await conference.replaceTrack(null, desktopAudioTrack);
+        await conference?.replaceTrack(null, desktopAudioTrack);
     }
 }
 
@@ -159,7 +142,7 @@ async function _toggleScreenSharing(
             enabled,
             audioOnly = false,
             shareOptions = {}
-        }: ToggleScreenSharingOptions,
+        }: IToggleScreenSharingOptions,
         store: IStore
 ): Promise<void> {
     const { dispatch, getState } = store;
@@ -246,12 +229,15 @@ async function _toggleScreenSharing(
             }
         }
 
-        // Disable audio-only or best performance mode if the user starts screensharing. This doesn't apply to
-        // audio-only screensharing.
+        // Show notification about more bandwidth usage in audio-only mode if the user starts screensharing. This
+        // doesn't apply to audio-only screensharing.
         const { enabled: bestPerformanceMode } = state['features/base/audio-only'];
 
         if (bestPerformanceMode && !audioOnly) {
-            dispatch(setAudioOnly(false));
+            dispatch(showNotification({
+                titleKey: 'notify.screenSharingAudioOnlyTitle',
+                descriptionKey: 'notify.screenSharingAudioOnlyDescription'
+            }, NOTIFICATION_TIMEOUT_TYPE.LONG));
         }
     } else {
         const { desktopAudioTrack } = state['features/screen-share'];
@@ -268,7 +254,7 @@ async function _toggleScreenSharing(
             if (localAudio) {
                 localAudio.setEffect(undefined);
             } else {
-                await conference.replaceTrack(desktopAudioTrack, null);
+                await conference?.replaceTrack(desktopAudioTrack, null);
             }
             desktopAudioTrack.dispose();
             dispatch(setScreenshareAudioTrack(null));
@@ -281,4 +267,53 @@ async function _toggleScreenSharing(
         // Notify the external API.
         APP.API.notifyScreenSharingStatusChanged(enable, screensharingDetails);
     }
+}
+
+/**
+ * Sets the camera facing mode(environment/user). If facing mode not provided, it will do a toggle.
+ *
+ * @param {string | undefined} facingMode - The selected facing mode.
+ * @returns {void}
+ */
+export function setCameraFacingMode(facingMode: string | undefined) {
+    return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
+        const state = getState();
+
+        if (!isToggleCameraEnabled(state)) {
+            return;
+        }
+
+        if (!facingMode) {
+            dispatch(toggleCamera());
+
+            return;
+        }
+
+        const tracks = state['features/base/tracks'];
+        const localVideoTrack = getLocalVideoTrack(tracks)?.jitsiTrack;
+
+        if (!tracks || !localVideoTrack) {
+            return;
+        }
+
+        const currentFacingMode = localVideoTrack.getCameraFacingMode();
+
+        if (currentFacingMode !== facingMode) {
+            dispatch(toggleCamera());
+        }
+    };
+}
+
+/**
+ * Signals to open the permission dialog for toggling camera remotely.
+ *
+ * @param {Function} onAllow - Callback to be executed if permission to toggle camera was granted.
+ * @param {string} initiatorId - The participant id of the requester.
+ * @returns {Object} - The open dialog action.
+ */
+export function openAllowToggleCameraDialog(onAllow: Function, initiatorId: string) {
+    return openDialog(AllowToggleCameraDialog, {
+        onAllow,
+        initiatorId
+    });
 }

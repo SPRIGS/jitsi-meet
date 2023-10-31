@@ -1,27 +1,31 @@
 import React, { Component, RefObject } from 'react';
 import { WithTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
 
-import { IState, IStore } from '../../../app/types';
+import { IReduxState, IStore } from '../../../app/types';
 import { isMobileBrowser } from '../../../base/environment/utils';
 import { translate } from '../../../base/i18n/functions';
-import { IconPlane, IconSmile } from '../../../base/icons/svg';
-import { connect } from '../../../base/redux/functions';
+import { IconFaceSmile, IconSend } from '../../../base/icons/svg';
 import Button from '../../../base/ui/components/web/Button';
 import Input from '../../../base/ui/components/web/Input';
 import { areSmileysDisabled } from '../../functions';
 
-// @ts-ignore
 import SmileysPanel from './SmileysPanel';
 
 /**
  * The type of the React {@code Component} props of {@link ChatInput}.
  */
-interface Props extends WithTranslation {
+interface IProps extends WithTranslation {
 
     /**
      * Whether chat emoticons are disabled.
      */
     _areSmileysDisabled: boolean;
+
+    /**
+     * The id of the message recipient, if any.
+     */
+    _privateMessageRecipientId?: string;
 
     /**
      * Invoked to send chat messages.
@@ -37,7 +41,7 @@ interface Props extends WithTranslation {
 /**
  * The type of the React {@code Component} state of {@link ChatInput}.
  */
-type State = {
+interface IState {
 
     /**
      * User provided nickname when the input text is provided in the view.
@@ -48,14 +52,14 @@ type State = {
      * Whether or not the smiley selector is visible.
      */
     showSmileysPanel: boolean;
-};
+}
 
 /**
  * Implements a React Component for drafting and submitting a chat message.
  *
  * @augments Component
  */
-class ChatInput extends Component<Props, State> {
+class ChatInput extends Component<IProps, IState> {
     _textArea?: RefObject<HTMLTextAreaElement>;
 
     state = {
@@ -69,7 +73,7 @@ class ChatInput extends Component<Props, State> {
      * @param {Object} props - The read-only properties with which the new
      * instance is to be initialized.
      */
-    constructor(props: Props) {
+    constructor(props: IProps) {
         super(props);
 
         this._textArea = React.createRef<HTMLTextAreaElement>();
@@ -91,6 +95,19 @@ class ChatInput extends Component<Props, State> {
         if (isMobileBrowser()) {
             // Ensure textarea is not focused when opening chat on mobile browser.
             this._textArea?.current && this._textArea.current.blur();
+        } else {
+            this._focus();
+        }
+    }
+
+    /**
+     * Implements {@code Component#componentDidUpdate}.
+     *
+     * @inheritdoc
+     */
+    componentDidUpdate(prevProps: Readonly<IProps>) {
+        if (prevProps._privateMessageRecipientId !== this.props._privateMessageRecipientId) {
+            this._textArea?.current?.focus();
         }
     }
 
@@ -115,10 +132,10 @@ class ChatInput extends Component<Props, State> {
                         </div>
                     )}
                     <Input
-                        autoFocus = { true }
                         className = 'chat-input'
-                        icon = { this.props._areSmileysDisabled ? undefined : IconSmile }
+                        icon = { this.props._areSmileysDisabled ? undefined : IconFaceSmile }
                         iconClick = { this._toggleSmileysPanel }
+                        id = 'chat-input-messagebox'
                         maxRows = { 5 }
                         onChange = { this._onMessageChange }
                         onKeyPress = { this._onDetectSubmit }
@@ -129,7 +146,7 @@ class ChatInput extends Component<Props, State> {
                     <Button
                         accessibilityLabel = { this.props.t('chat.sendButton') }
                         disabled = { !this.state.message.trim() }
-                        icon = { IconPlane }
+                        icon = { IconSend }
                         onClick = { this._onSubmitMessage }
                         size = { isMobileBrowser() ? 'large' : 'medium' } />
                 </div>
@@ -254,9 +271,12 @@ class ChatInput extends Component<Props, State> {
  *     _areSmileysDisabled: boolean
  * }}
  */
-const mapStateToProps = (state: IState) => {
+const mapStateToProps = (state: IReduxState) => {
+    const { privateMessageRecipient } = state['features/chat'];
+
     return {
-        _areSmileysDisabled: areSmileysDisabled(state)
+        _areSmileysDisabled: areSmileysDisabled(state),
+        _privateMessageRecipientId: privateMessageRecipient?.id
     };
 };
 

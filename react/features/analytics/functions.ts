@@ -1,12 +1,10 @@
-/* eslint-disable lines-around-comment */
-// @ts-ignore
+// @ts-expect-error
 import { API_ID } from '../../../modules/API/constants';
-// @ts-ignore
 import { getName as getAppName } from '../app/functions';
 import { IStore } from '../app/types';
 import { getAnalyticsRoomName } from '../base/conference/functions';
+import checkChromeExtensionsInstalled from '../base/environment/checkChromeExtensionsInstalled';
 import {
-    checkChromeExtensionsInstalled,
     isMobileBrowser
 } from '../base/environment/utils';
 import JitsiMeetJS, {
@@ -14,10 +12,9 @@ import JitsiMeetJS, {
     browser
 } from '../base/lib-jitsi-meet';
 import { isAnalyticsEnabled } from '../base/lib-jitsi-meet/functions.any';
-// @ts-ignore
-import { loadScript } from '../base/util';
 import { getJitsiMeetGlobalNS } from '../base/util/helpers';
 import { inIframe } from '../base/util/iframeUtils';
+import { loadScript } from '../base/util/loadScript';
 import { parseURIString } from '../base/util/uri';
 
 import AmplitudeHandler from './handlers/AmplitudeHandler';
@@ -65,7 +62,7 @@ export function resetAnalytics() {
  * @param {Store} store - The redux store in which the specified {@code action} is being dispatched.
  * @returns {Promise} Resolves with the handlers that have been successfully loaded.
  */
-export async function createHandlers({ getState }: { getState: Function; }) {
+export async function createHandlers({ getState }: IStore) {
     getJitsiMeetGlobalNS().analyticsHandlers = [];
 
     if (!isAnalyticsEnabled(getState)) {
@@ -85,6 +82,7 @@ export async function createHandlers({ getState }: { getState: Function; }) {
     } = config;
     const {
         amplitudeAPPKey,
+        amplitudeIncludeUTM,
         blackListedEvents,
         scriptURLs,
         googleAnalyticsTrackingId,
@@ -95,6 +93,7 @@ export async function createHandlers({ getState }: { getState: Function; }) {
     const { group, user } = state['features/base/jwt'];
     const handlerConstructorOptions = {
         amplitudeAPPKey,
+        amplitudeIncludeUTM,
         blackListedEvents,
         envType: deploymentInfo?.envType || 'dev',
         googleAnalyticsTrackingId,
@@ -176,7 +175,15 @@ export function initAnalytics(store: IStore, handlers: Array<Object>) {
     const { group, server } = state['features/base/jwt'];
     const { locationURL = { href: '' } } = state['features/base/connection'];
     const { tenant } = parseURIString(locationURL.href) || {};
-    const permanentProperties: any = {};
+    const permanentProperties: {
+        appName?: string;
+        externalApi?: boolean;
+        group?: string;
+        inIframe?: boolean;
+        server?: string;
+        tenant?: string;
+        websocket?: boolean;
+    } & typeof deploymentInfo = {};
 
     if (server) {
         permanentProperties.server = server;
@@ -205,7 +212,8 @@ export function initAnalytics(store: IStore, handlers: Array<Object>) {
     if (deploymentInfo) {
         for (const key in deploymentInfo) {
             if (deploymentInfo.hasOwnProperty(key)) {
-                permanentProperties[key] = deploymentInfo[key as keyof typeof deploymentInfo];
+                permanentProperties[key as keyof typeof deploymentInfo] = deploymentInfo[
+                    key as keyof typeof deploymentInfo];
             }
         }
     }
@@ -216,7 +224,7 @@ export function initAnalytics(store: IStore, handlers: Array<Object>) {
     // Set the handlers last, since this triggers emptying of the cache
     analytics.setAnalyticsHandlers(handlers);
 
-    if (!isMobileBrowser() && browser.isChrome()) {
+    if (!isMobileBrowser() && browser.isChromiumBased()) {
         const bannerCfg = state['features/base/config'].chromeExtensionBanner;
 
         checkChromeExtensionsInstalled(bannerCfg).then(extensionsInstalled => {
@@ -238,8 +246,8 @@ export function initAnalytics(store: IStore, handlers: Array<Object>) {
  * @returns {Promise} Resolves with the handlers that have been successfully loaded and rejects if there are no handlers
  * loaded or the analytics is disabled.
  */
-function _loadHandlers(scriptURLs: any[] = [], handlerConstructorOptions: Object) {
-    const promises = [];
+function _loadHandlers(scriptURLs: string[] = [], handlerConstructorOptions: Object) {
+    const promises: Promise<{ error?: Error; type: string; url?: string; }>[] = [];
 
     for (const url of scriptURLs) {
         promises.push(

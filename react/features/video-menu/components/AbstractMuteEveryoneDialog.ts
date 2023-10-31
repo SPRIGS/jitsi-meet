@@ -1,35 +1,31 @@
-import { WithTranslation } from 'react-i18next';
-
-import { IState } from '../../app/types';
+import { IReduxState } from '../../app/types';
 import { requestDisableAudioModeration, requestEnableAudioModeration } from '../../av-moderation/actions';
 import { isEnabledFromState, isSupported } from '../../av-moderation/functions';
 import { MEDIA_TYPE } from '../../base/media/constants';
 import { getLocalParticipant, getParticipantDisplayName } from '../../base/participants/functions';
-// eslint-disable-next-line lines-around-comment
-// @ts-ignore
 import { muteAllParticipants } from '../actions';
 
 import AbstractMuteRemoteParticipantDialog, {
-    type Props as AbstractProps
+    type IProps as AbstractProps
 } from './AbstractMuteRemoteParticipantDialog';
 
 /**
  * The type of the React {@code Component} props of
  * {@link AbstractMuteEveryoneDialog}.
  */
-export type Props = AbstractProps & WithTranslation & {
-    content: string;
+export interface IProps extends AbstractProps {
+    content?: string;
     exclude: Array<string>;
-    isAudioModerationEnabled: boolean;
-    isModerationSupported: boolean;
+    isAudioModerationEnabled?: boolean;
+    isModerationSupported?: boolean;
     showAdvancedModerationToggle: boolean;
     title: string;
-};
+}
 
-type State = {
-    audioModerationEnabled: boolean;
+interface IState {
+    audioModerationEnabled?: boolean;
     content: string;
-};
+}
 
 /**
  *
@@ -38,7 +34,8 @@ type State = {
  *
  * @augments AbstractMuteRemoteParticipantDialog
  */
-export default class AbstractMuteEveryoneDialog<P extends Props> extends AbstractMuteRemoteParticipantDialog<P, State> {
+export default class AbstractMuteEveryoneDialog<P extends IProps> extends
+    AbstractMuteRemoteParticipantDialog<P, IState> {
     static defaultProps = {
         exclude: [],
         muteLocal: false
@@ -106,11 +103,11 @@ export default class AbstractMuteEveryoneDialog<P extends Props> extends Abstrac
 /**
  * Maps (parts of) the Redux state to the associated {@code AbstractMuteEveryoneDialog}'s props.
  *
- * @param {IState} state - The redux state.
+ * @param {IReduxState} state - The redux state.
  * @param {Object} ownProps - The properties explicitly passed to the component.
- * @returns {Props}
+ * @returns {IProps}
  */
-export function abstractMapStateToProps(state: IState, ownProps: Props) {
+export function abstractMapStateToProps(state: IReduxState, ownProps: IProps) {
     const { exclude = [], t } = ownProps;
 
     const whom = exclude

@@ -18,8 +18,6 @@ import StateListenerRegistry from '../base/redux/StateListenerRegistry';
 import { playSound, registerSound, unregisterSound } from '../base/sounds/actions';
 import { hideNotification, showNotification } from '../notifications/actions';
 import { NOTIFICATION_TIMEOUT_TYPE } from '../notifications/constants';
-// eslint-disable-next-line lines-around-comment
-// @ts-ignore
 import { muteLocal } from '../video-menu/actions.any';
 
 import {
@@ -60,8 +58,6 @@ import {
 } from './functions';
 import { ASKED_TO_UNMUTE_FILE } from './sounds';
 
-declare const APP: any;
-
 MiddlewareRegistry.register(({ dispatch, getState }) => next => action => {
     const { type } = action;
     const { conference } = getConferenceState(getState());
@@ -93,7 +89,7 @@ MiddlewareRegistry.register(({ dispatch, getState }) => next => action => {
             uid = VIDEO_MODERATION_NOTIFICATION_ID;
             break;
         }
-        case MEDIA_TYPE.PRESENTER: {
+        case MEDIA_TYPE.SCREENSHARE: {
             titleKey = 'notify.moderationInEffectCSTitle';
             uid = CS_MODERATION_NOTIFICATION_ID;
             break;

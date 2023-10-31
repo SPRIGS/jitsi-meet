@@ -5,11 +5,9 @@ import { showErrorNotification, showNotification } from '../../notifications/act
 import { NOTIFICATION_TIMEOUT, NOTIFICATION_TIMEOUT_TYPE } from '../../notifications/constants';
 import { getCurrentConference } from '../conference/functions';
 import { IJitsiConference } from '../conference/reducer';
-import { getMultipleVideoSendingSupportFeatureFlag, getMultipleVideoSupportFeatureFlag } from '../config/functions.any';
+import { getMultipleVideoSendingSupportFeatureFlag } from '../config/functions.any';
 import { JitsiTrackErrors, JitsiTrackEvents } from '../lib-jitsi-meet';
-// eslint-disable-next-line lines-around-comment
-// @ts-ignore
-import { createLocalTrack } from '../lib-jitsi-meet/functions';
+import { createLocalTrack } from '../lib-jitsi-meet/functions.any';
 import { setAudioMuted, setScreenshareMuted, setVideoMuted } from '../media/actions';
 import {
     CAMERA_FACING_MODE,
@@ -29,10 +27,10 @@ import {
     TRACK_CREATE_ERROR,
     TRACK_MUTE_UNMUTE_FAILED,
     TRACK_NO_DATA_FROM_SOURCE,
+    TRACK_OWNER_CHANGED,
     TRACK_REMOVED,
     TRACK_STOPPED,
     TRACK_UPDATED,
-    TRACK_UPDATE_LAST_VIDEO_MEDIA_EVENT,
     TRACK_WILL_CREATE
 } from './actionTypes';
 import {
@@ -43,7 +41,7 @@ import {
     getTrackByJitsiTrack
 } from './functions';
 import logger from './logger';
-import { TrackOptions } from './types';
+import { ITrackOptions } from './types';
 
 /**
  * Add a given local track to the conference.
@@ -133,7 +131,7 @@ export function createDesiredLocalTracks(...desiredTypes: any) {
  * @param {Object} [options] - For info @see JitsiMeetJS.createLocalTracks.
  * @returns {Function}
  */
-export function createLocalTracksA(options: TrackOptions = {}) {
+export function createLocalTracksA(options: ITrackOptions = {}) {
     return (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const devices
             = options.devices || [ MEDIA_TYPE.AUDIO, MEDIA_TYPE.VIDEO ];
@@ -141,9 +139,10 @@ export function createLocalTracksA(options: TrackOptions = {}) {
             dispatch,
             getState
         };
+        const promises = [];
 
         // The following executes on React Native only at the time of this
-        // writing. The effort to port Web's createInitialLocalTracksAndConnect
+        // writing. The effort to port Web's createInitialLocalTracks
         // is significant and that's where the function createLocalTracksF got
         // born. I started with the idea a porting so that we could inherit the
         // ability to getUserMedia for audio only or video only if getUserMedia
@@ -160,7 +159,7 @@ export function createLocalTracksA(options: TrackOptions = {}) {
                 throw new Error(`Local track for ${device} already exists`);
             }
 
-            const gumProcess
+            const gumProcess: any
                 = createLocalTracksF(
                     {
                         cameraDeviceId: options.cameraDeviceId,
@@ -170,7 +169,7 @@ export function createLocalTracksA(options: TrackOptions = {}) {
                         micDeviceId: options.micDeviceId
                     },
                     store)
-                .then(
+                .then( // @ts-ignore
                     (localTracks: any[]) => {
                         // Because GUM is called for 1 device (which is actually
                         // a media type 'audio', 'video', 'screen', etc.) we
@@ -198,6 +197,8 @@ export function createLocalTracksA(options: TrackOptions = {}) {
                                     reason,
                                     device)));
 
+            promises.push(gumProcess.catch(() => undefined));
+
             /**
              * Cancels the {@code getUserMedia} process represented by this
              * {@code Promise}.
@@ -219,6 +220,8 @@ export function createLocalTracksA(options: TrackOptions = {}) {
                 }
             });
         }
+
+        return Promise.all(promises);
     };
 }
 
@@ -229,7 +232,7 @@ export function createLocalTracksA(options: TrackOptions = {}) {
  * @param {JitsiLocalTrack|null} [track] - The local track that needs to be destroyed.
  * @returns {Function}
  */
-export function destroyLocalTracks(track = null) {
+export function destroyLocalTracks(track: any = null) {
     if (track) {
         return (dispatch: IStore['dispatch']) => {
             dispatch(_disposeAndRemoveTracks([ track ]));
@@ -379,11 +382,11 @@ export function trackAdded(track: any) {
         track.on(
             JitsiTrackEvents.TRACK_VIDEOTYPE_CHANGED,
             (type: VideoType) => dispatch(trackVideoTypeChanged(track, type)));
-
+        track.on(
+            JitsiTrackEvents.TRACK_OWNER_CHANGED,
+            (owner: string) => dispatch(trackOwnerChanged(track, owner)));
         const local = track.isLocal();
-        const isVirtualScreenshareParticipantCreated = local
-            ? getMultipleVideoSendingSupportFeatureFlag(getState())
-            : getMultipleVideoSupportFeatureFlag(getState());
+        const isVirtualScreenshareParticipantCreated = !local || getMultipleVideoSendingSupportFeatureFlag(getState());
         const mediaType = track.getVideoType() === VIDEO_TYPE.DESKTOP && isVirtualScreenshareParticipantCreated
             ? MEDIA_TYPE.SCREENSHARE
             : track.getType();
@@ -604,11 +607,14 @@ export function trackVideoStarted(track: any): {
  * }}
  */
 export function trackVideoTypeChanged(track: any, videoType: VideoType) {
+    const mediaType = videoType === VIDEO_TYPE.CAMERA ? MEDIA_TYPE.VIDEO : MEDIA_TYPE.SCREENSHARE;
+
     return {
         type: TRACK_UPDATED,
         track: {
             jitsiTrack: track,
-            videoType
+            videoType,
+            mediaType
         }
     };
 }
@@ -640,6 +646,32 @@ export function trackStreamingStatusChanged(track: any, streamingStatus: string)
         track: {
             jitsiTrack: track,
             streamingStatus
+        }
+    };
+}
+
+/**
+ * Create an action for when the owner of the track changes due to ssrc remapping.
+ *
+ * @param {(JitsiRemoteTrack)} track - JitsiTrack instance.
+ * @param {string} participantId - New owner's participant ID.
+ * @returns {{
+ *     type: TRACK_OWNER_CHANGED,
+ *     track: Track
+ * }}
+ */
+export function trackOwnerChanged(track: any, participantId: string): {
+    track: {
+        jitsiTrack: any;
+        participantId: string;
+    };
+    type: 'TRACK_OWNER_CHANGED';
+} {
+    return {
+        type: TRACK_OWNER_CHANGED,
+        track: {
+            jitsiTrack: track,
+            participantId
         }
     };
 }
@@ -818,29 +850,6 @@ export function setNoSrcDataNotificationUid(uid?: string) {
     return {
         type: SET_NO_SRC_DATA_NOTIFICATION_UID,
         uid
-    };
-}
-
-/**
- * Updates the last media event received for a video track.
- *
- * @param {JitsiRemoteTrack} track - JitsiTrack instance.
- * @param {string} name - The current media event name for the video.
- * @returns {{
- *     type: TRACK_UPDATE_LAST_VIDEO_MEDIA_EVENT,
- *     track: Track,
- *     name: string
- * }}
- */
-export function updateLastTrackVideoMediaEvent(track: any, name: string): {
-    name: string;
-    track: any;
-    type: 'TRACK_UPDATE_LAST_VIDEO_MEDIA_EVENT';
-} {
-    return {
-        type: TRACK_UPDATE_LAST_VIDEO_MEDIA_EVENT,
-        track,
-        name
     };
 }
 

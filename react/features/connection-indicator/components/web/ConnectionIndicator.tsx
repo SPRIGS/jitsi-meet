@@ -1,5 +1,3 @@
-/* eslint-disable lines-around-comment */
-
 import { Theme } from '@mui/material';
 import { withStyles } from '@mui/styles';
 import clsx from 'clsx';
@@ -7,8 +5,7 @@ import React from 'react';
 import { WithTranslation } from 'react-i18next';
 import { connect } from 'react-redux';
 
-import { IState, IStore } from '../../../app/types';
-import { getSourceNameSignalingFeatureFlag } from '../../../base/config/functions.any';
+import { IReduxState, IStore } from '../../../app/types';
 import { translate } from '../../../base/i18n/functions';
 import { MEDIA_TYPE } from '../../../base/media/constants';
 import {
@@ -16,29 +13,24 @@ import {
     getParticipantById,
     isScreenShareParticipant
 } from '../../../base/participants/functions';
-// @ts-ignore
-import { Popover } from '../../../base/popover';
+import Popover from '../../../base/popover/components/Popover.web';
 import {
-    getSourceNameByParticipantId,
     getTrackByMediaTypeAndParticipant,
     getVirtualScreenshareParticipantTrack
 } from '../../../base/tracks/functions';
+import { ITrack } from '../../../base/tracks/types';
 import {
-    isParticipantConnectionStatusInactive,
-    isParticipantConnectionStatusInterrupted,
     isTrackStreamingStatusInactive,
     isTrackStreamingStatusInterrupted
 } from '../../functions';
 import AbstractConnectionIndicator, {
-    type Props as AbstractProps,
-    type State as AbstractState,
-    INDICATOR_DISPLAY_THRESHOLD
-    // @ts-ignore
+    IProps as AbstractProps,
+    IState as AbstractState,
+    INDICATOR_DISPLAY_THRESHOLD,
+    mapStateToProps as _abstractMapStateToProps
 } from '../AbstractConnectionIndicator';
 
-// @ts-ignore
 import ConnectionIndicatorContent from './ConnectionIndicatorContent';
-// @ts-ignore
 import { ConnectionIndicatorIcon } from './ConnectionIndicatorIcon';
 
 /**
@@ -81,7 +73,7 @@ const QUALITY_TO_WIDTH: Array<{
 /**
  * The type of the React {@code Component} props of {@link ConnectionIndicator}.
  */
-type Props = AbstractProps & WithTranslation & {
+interface IProps extends AbstractProps, WithTranslation {
 
     /**
      * Disable/enable inactive indicator.
@@ -89,10 +81,14 @@ type Props = AbstractProps & WithTranslation & {
     _connectionIndicatorInactiveDisabled: boolean;
 
     /**
-     * The current condition of the user's connection, matching one of the
-     * enumerated values in the library.
+     * Whether the connection status is inactive.
      */
-    _connectionStatus: string;
+    _isConnectionStatusInactive: boolean;
+
+    /**
+     * Whether the connection status is interrupted.
+     */
+    _isConnectionStatusInterrupted?: boolean;
 
     /**
      * Whether the indicator popover is disabled.
@@ -100,14 +96,9 @@ type Props = AbstractProps & WithTranslation & {
     _popoverDisabled: boolean;
 
     /**
-     * The source name of the track.
+     * The participant's video track;.
      */
-    _sourceName: string;
-
-    /**
-     * Whether source name signaling is enabled.
-     */
-    _sourceNameSignalingEnabled: boolean;
+    _videoTrack?: ITrack;
 
     /**
      * Whether or not the component should ignore setting a visibility class for
@@ -118,7 +109,7 @@ type Props = AbstractProps & WithTranslation & {
     /**
      * The audio SSRC of this client.
      */
-    audioSsrc: number;
+    audioSsrc?: number;
 
     /**
      * An object containing the CSS classes.
@@ -146,15 +137,15 @@ type Props = AbstractProps & WithTranslation & {
      * should display.
      */
     statsPopoverPosition: string;
-};
+}
 
-type State = AbstractState & {
+interface IState extends AbstractState {
 
     /**
-     * Whether popover is ivisible or not.
+     * Whether popover is visible or not.
      */
     popoverVisible: boolean;
-};
+}
 
 const styles = (theme: Theme) => {
     return {
@@ -167,7 +158,7 @@ const styles = (theme: Theme) => {
         },
 
         icon: {
-            padding: '6px',
+            padding: '4px',
             borderRadius: '4px',
 
             '&.status-high': {
@@ -208,17 +199,16 @@ const styles = (theme: Theme) => {
  *
  * @augments {Component}
  */
-class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
+class ConnectionIndicator extends AbstractConnectionIndicator<IProps, IState> {
     /**
      * Initializes a new {@code ConnectionIndicator} instance.
      *
      * @param {Object} props - The read-only properties with which the new
      * instance is to be initialized.
      */
-    constructor(props: Props) {
+    constructor(props: IProps) {
         super(props);
 
-        // @ts-ignore
         this.state = {
             showIndicator: false,
             stats: {},
@@ -235,11 +225,9 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
      * @returns {ReactElement}
      */
     render() {
-        // @ts-ignore
-        const { enableStatsDisplay, participantId, statsPopoverPosition, classes } = this.props;
+        const { enableStatsDisplay, participantId, statsPopoverPosition, classes, t } = this.props;
         const visibilityClass = this._getVisibilityClass();
 
-        // @ts-ignore
         if (this.props._popoverDisabled) {
             return this._renderIndicator();
         }
@@ -248,16 +236,14 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
             <Popover
                 className = { clsx(classes.container, visibilityClass) }
                 content = { <ConnectionIndicatorContent
-                    // @ts-ignore
                     inheritedStats = { this.state.stats }
                     participantId = { participantId } /> }
                 disablePopover = { !enableStatsDisplay }
+                headingLabel = { t('videothumbnail.connectionInfo') }
                 id = 'participant-connection-indicator'
-                noPaddingContent = { true }
                 onPopoverClose = { this._onHidePopover }
                 onPopoverOpen = { this._onShowPopover }
                 position = { statsPopoverPosition }
-                // @ts-ignore
                 visible = { this.state.popoverVisible }>
                 { this._renderIndicator() }
             </Popover>
@@ -273,14 +259,12 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
      */
     _getConnectionColorClass() {
         // TODO We currently do not have logic to emit and handle stats changes for tracks.
-        // @ts-ignore
         const { percent } = this.state.stats;
 
         const {
             _isConnectionStatusInactive,
             _isConnectionStatusInterrupted,
             _connectionIndicatorInactiveDisabled
-            // @ts-ignore
         } = this.props;
 
         if (_isConnectionStatusInactive) {
@@ -321,12 +305,9 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
      * @returns {string}
      */
     _getVisibilityClass() {
-        // @ts-ignore
         const { _isConnectionStatusInactive, _isConnectionStatusInterrupted, classes } = this.props;
 
-        // @ts-ignore
         return this.state.showIndicator
-            // @ts-ignore
             || this.props.alwaysVisible
             || _isConnectionStatusInterrupted
             || _isConnectionStatusInactive
@@ -340,7 +321,6 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
      * @returns {void}
      */
     _onHidePopover() {
-        // @ts-ignore
         this.setState({ popoverVisible: false });
     }
 
@@ -351,7 +331,6 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
      * @returns {void}
      */
     _onShowPopover() {
-        // @ts-ignore
         this.setState({ popoverVisible: true });
     }
 
@@ -368,13 +347,14 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
             _connectionIndicatorInactiveDisabled,
             _videoTrack,
             classes,
-            iconSize
-            // @ts-ignore
+            iconSize,
+            t
         } = this.props;
 
         return (
             <div
                 style = {{ fontSize: iconSize }}>
+                <span className = 'sr-only'>{ t('videothumbnail.connectionInfo') }</span>
                 <ConnectionIndicatorIcon
                     classes = { classes }
                     colorClass = { this._getConnectionColorClass() }
@@ -391,42 +371,32 @@ class ConnectionIndicator extends AbstractConnectionIndicator<Props, State> {
  * Maps part of the Redux state to the props of this component.
  *
  * @param {Object} state - The Redux state.
- * @param {Props} ownProps - The own props of the component.
- * @returns {Props}
+ * @param {IProps} ownProps - The own props of the component.
+ * @returns {IProps}
  */
-export function _mapStateToProps(state: IState, ownProps: Props) {
+export function _mapStateToProps(state: IReduxState, ownProps: any) {
     const { participantId } = ownProps;
     const tracks = state['features/base/tracks'];
-    const sourceNameSignalingEnabled = getSourceNameSignalingFeatureFlag(state);
     const participant = participantId ? getParticipantById(state, participantId) : getLocalParticipant(state);
+    let _videoTrack = getTrackByMediaTypeAndParticipant(tracks, MEDIA_TYPE.VIDEO, participantId);
 
-    let firstVideoTrack;
-
-    if (sourceNameSignalingEnabled && isScreenShareParticipant(participant)) {
-        firstVideoTrack = getVirtualScreenshareParticipantTrack(tracks, participantId);
-    } else {
-        firstVideoTrack = getTrackByMediaTypeAndParticipant(tracks, MEDIA_TYPE.VIDEO, participantId);
+    if (isScreenShareParticipant(participant)) {
+        _videoTrack = getVirtualScreenshareParticipantTrack(tracks, participantId);
     }
 
-    const _isConnectionStatusInactive = sourceNameSignalingEnabled
-        ? isTrackStreamingStatusInactive(firstVideoTrack)
-        : isParticipantConnectionStatusInactive(participant);
-
-    const _isConnectionStatusInterrupted = sourceNameSignalingEnabled
-        ? isTrackStreamingStatusInterrupted(firstVideoTrack)
-        : isParticipantConnectionStatusInterrupted(participant);
+    const _isConnectionStatusInactive = isTrackStreamingStatusInactive(_videoTrack);
+    const _isConnectionStatusInterrupted = isTrackStreamingStatusInterrupted(_videoTrack);
 
     return {
+        ..._abstractMapStateToProps(state),
         _connectionIndicatorInactiveDisabled:
-        Boolean(state['features/base/config'].connectionIndicators?.inactiveDisabled),
-        _popoverDisabled: state['features/base/config'].connectionIndicators?.disableDetails,
-        _videoTrack: firstVideoTrack,
+            Boolean(state['features/base/config'].connectionIndicators?.inactiveDisabled),
+        _isVirtualScreenshareParticipant: isScreenShareParticipant(participant),
+        _popoverDisabled: Boolean(state['features/base/config'].connectionIndicators?.disableDetails),
         _isConnectionStatusInactive,
         _isConnectionStatusInterrupted,
-        _sourceName: getSourceNameByParticipantId(state, participantId),
-        _sourceNameSignalingEnabled: sourceNameSignalingEnabled
+        _videoTrack
     };
 }
-export default translate(connect(_mapStateToProps)(
-    // @ts-ignore
-    withStyles(styles)(ConnectionIndicator)));
+
+export default connect(_mapStateToProps)(translate(withStyles(styles)(ConnectionIndicator)));

@@ -1,23 +1,18 @@
-/* eslint-disable lines-around-comment */
 import React, { useEffect } from 'react';
 import { WithTranslation } from 'react-i18next';
+import { connect } from 'react-redux';
 
 import { createInviteDialogEvent } from '../../../../analytics/AnalyticsEvents';
 import { sendAnalytics } from '../../../../analytics/functions';
-import { IState } from '../../../../app/types';
+import { IReduxState } from '../../../../app/types';
 import { getInviteURL } from '../../../../base/connection/functions';
 import { translate } from '../../../../base/i18n/functions';
 import { JitsiRecordingConstants } from '../../../../base/lib-jitsi-meet';
-import { connect } from '../../../../base/redux/functions';
 import Dialog from '../../../../base/ui/components/web/Dialog';
+import { StatusCode } from '../../../../base/util/uri';
 import { isDynamicBrandingDataLoaded } from '../../../../dynamic-branding/functions.any';
-// @ts-ignore
-import EmbedMeetingTrigger from '../../../../embed-meeting/components/EmbedMeetingTrigger';
-import { isVpaasMeeting } from '../../../../jaas/functions';
-// @ts-ignore
-import { getActiveSession } from '../../../../recording';
-// @ts-ignore
-import { updateDialInNumbers } from '../../../actions';
+import { getActiveSession } from '../../../../recording/functions';
+import { updateDialInNumbers } from '../../../actions.web';
 import {
     _getDefaultPhoneNumber,
     getInviteText,
@@ -26,22 +21,16 @@ import {
     isDialOutEnabled,
     isSharingEnabled,
     sharingFeatures
-    // @ts-ignore
 } from '../../../functions';
 
-// @ts-ignore
 import CopyMeetingLinkSection from './CopyMeetingLinkSection';
 import DialInLimit from './DialInLimit';
-// @ts-ignore
 import DialInSection from './DialInSection';
-// @ts-ignore
 import InviteByEmailSection from './InviteByEmailSection';
-// @ts-ignore
 import InviteContactsSection from './InviteContactsSection';
-// @ts-ignore
 import LiveStreamSection from './LiveStreamSection';
 
-interface Props extends WithTranslation {
+interface IProps extends WithTranslation {
 
     /**
      * The object representing the dialIn feature.
@@ -59,11 +48,6 @@ interface Props extends WithTranslation {
     _emailSharingVisible: boolean;
 
     /**
-     * Whether or not embed meeting should be visible.
-     */
-    _embedMeetingVisible: boolean;
-
-    /**
      * The meeting invitation text.
      */
     _invitationText: string;
@@ -77,7 +61,7 @@ interface Props extends WithTranslation {
     /**
      * An alternate app name to be displayed in the email subject.
      */
-    _inviteAppName?: string;
+    _inviteAppName?: string | null;
 
     /**
      * Whether or not invite contacts should be visible.
@@ -90,19 +74,19 @@ interface Props extends WithTranslation {
     _inviteUrl: string;
 
     /**
-     * Whether or not the current meeting belongs to a JaaS user.
+     * Whether the dial in limit has been exceeded.
      */
-    _isVpaasMeeting: boolean;
+    _isDialInOverLimit?: boolean;
 
     /**
      * The current known URL for a live stream in progress.
      */
-    _liveStreamViewURL: string;
+    _liveStreamViewURL?: string;
 
     /**
      * The default phone number.
      */
-    _phoneNumber?: string;
+    _phoneNumber?: string | null;
 
     /**
      * Whether or not url sharing button should be visible.
@@ -122,7 +106,6 @@ interface Props extends WithTranslation {
  */
 function AddPeopleDialog({
     _dialIn,
-    _embedMeetingVisible,
     _dialInVisible,
     _urlSharingVisible,
     _emailSharingVisible,
@@ -131,11 +114,12 @@ function AddPeopleDialog({
     _inviteAppName,
     _inviteContactsVisible,
     _inviteUrl,
-    _isVpaasMeeting,
+    _isDialInOverLimit,
     _liveStreamViewURL,
     _phoneNumber,
     t,
-    updateNumbers }: Props) {
+    updateNumbers
+}: IProps) {
 
     /**
      * Updates the dial-in numbers.
@@ -181,7 +165,6 @@ function AddPeopleDialog({
                             inviteTextiOS = { _invitationTextiOS } />
                         : null
                 }
-                { _embedMeetingVisible && <EmbedMeetingTrigger /> }
                 <div className = 'invite-more-dialog separator' />
                 {
                     _liveStreamViewURL
@@ -193,7 +176,7 @@ function AddPeopleDialog({
                         && <DialInSection phoneNumber = { _phoneNumber } />
                 }
                 {
-                    !_dialInVisible && _isVpaasMeeting && <DialInLimit />
+                    !_phoneNumber && _dialInVisible && _isDialInOverLimit && <DialInLimit />
                 }
             </div>
         </Dialog>
@@ -207,21 +190,21 @@ function AddPeopleDialog({
  * @param {Object} state - The Redux state.
  * @param {Object} ownProps - The properties explicitly passed to the component.
  * @private
- * @returns {Props}
+ * @returns {IProps}
  */
-function mapStateToProps(state: IState, ownProps: Partial<Props>) {
+function mapStateToProps(state: IReduxState, ownProps: Partial<IProps>) {
     const currentLiveStreamingSession
         = getActiveSession(state, JitsiRecordingConstants.mode.STREAM);
     const { iAmRecorder, inviteAppName } = state['features/base/config'];
     const addPeopleEnabled = isAddPeopleEnabled(state);
     const dialOutEnabled = isDialOutEnabled(state);
     const hideInviteContacts = iAmRecorder || (!addPeopleEnabled && !dialOutEnabled);
-    const dialIn = state['features/invite'];
+    const dialIn = state['features/invite']; // @ts-ignore
     const phoneNumber = dialIn?.numbers ? _getDefaultPhoneNumber(dialIn.numbers) : undefined;
+    const isDialInOverLimit = dialIn?.error?.status === StatusCode.PaymentRequired;
 
     return {
         _dialIn: dialIn,
-        _embedMeetingVisible: !isVpaasMeeting(state) && isSharingEnabled(sharingFeatures.embed),
         _dialInVisible: isSharingEnabled(sharingFeatures.dialIn),
         _urlSharingVisible: isDynamicBrandingDataLoaded(state) && isSharingEnabled(sharingFeatures.url),
         _emailSharingVisible: isSharingEnabled(sharingFeatures.email),
@@ -234,7 +217,7 @@ function mapStateToProps(state: IState, ownProps: Partial<Props>) {
         _inviteAppName: inviteAppName,
         _inviteContactsVisible: interfaceConfig.ENABLE_DIAL_OUT && !hideInviteContacts,
         _inviteUrl: getInviteURL(state),
-        _isVpaasMeeting: isVpaasMeeting(state),
+        _isDialInOverLimit: isDialInOverLimit,
         _liveStreamViewURL: currentLiveStreamingSession?.liveStreamViewURL,
         _phoneNumber: phoneNumber
     };
@@ -244,7 +227,7 @@ function mapStateToProps(state: IState, ownProps: Partial<Props>) {
  * Maps dispatching of some action to React component props.
  *
  * @param {Function} dispatch - Redux action dispatcher.
- * @returns {Props}
+ * @returns {IProps}
  */
 const mapDispatchToProps = {
     updateNumbers: () => updateDialInNumbers()

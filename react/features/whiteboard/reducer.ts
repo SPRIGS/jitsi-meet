@@ -18,10 +18,11 @@ export interface IWhiteboardState {
 }
 
 const DEFAULT_STATE: IWhiteboardState = {
-    isOpen: false
+    isOpen: false,
+    collabDetails: undefined
 };
 
-export interface WhiteboardAction extends Partial<IWhiteboardState> {
+export interface IWhiteboardAction extends Partial<IWhiteboardState> {
 
     /**
      * The whiteboard collaboration details.
@@ -36,7 +37,7 @@ export interface WhiteboardAction extends Partial<IWhiteboardState> {
 
 ReducerRegistry.register(
     'features/whiteboard',
-    (state: IWhiteboardState = DEFAULT_STATE, action: WhiteboardAction) => {
+    (state: IWhiteboardState = DEFAULT_STATE, action: IWhiteboardAction) => {
         switch (action.type) {
         case SETUP_WHITEBOARD: {
             return {

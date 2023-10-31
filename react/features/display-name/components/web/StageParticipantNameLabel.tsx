@@ -1,28 +1,22 @@
-/* eslint-disable lines-around-comment */
-
-import { Theme } from '@mui/material';
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
 
-import { IState } from '../../../app/types';
+import { IReduxState } from '../../../app/types';
 import { isDisplayNameVisible } from '../../../base/config/functions.any';
 import {
     getLocalParticipant,
     getParticipantDisplayName,
     isWhiteboardParticipant
 } from '../../../base/participants/functions';
-import { Participant } from '../../../base/participants/types';
 import { withPixelLineHeight } from '../../../base/styles/functions.web';
-// @ts-ignore
 import { getLargeVideoParticipant } from '../../../large-video/functions';
 import { isToolboxVisible } from '../../../toolbox/functions.web';
-// @ts-ignore
-import { isLayoutTileView } from '../../../video-layout';
+import { isLayoutTileView } from '../../../video-layout/functions.web';
 
 import DisplayNameBadge from './DisplayNameBadge';
 
-const useStyles = makeStyles()((theme: Theme) => {
+const useStyles = makeStyles()(theme => {
     return {
         badgeContainer: {
             ...withPixelLineHeight(theme.typography.bodyShortRegularLarge),
@@ -51,9 +45,9 @@ const useStyles = makeStyles()((theme: Theme) => {
  */
 const StageParticipantNameLabel = () => {
     const { classes, cx } = useStyles();
-    const largeVideoParticipant: Participant = useSelector(getLargeVideoParticipant);
+    const largeVideoParticipant = useSelector(getLargeVideoParticipant);
     const selectedId = largeVideoParticipant?.id;
-    const nameToDisplay = useSelector((state: IState) => getParticipantDisplayName(state, selectedId));
+    const nameToDisplay = useSelector((state: IReduxState) => getParticipantDisplayName(state, selectedId ?? ''));
 
     const localParticipant = useSelector(getLocalParticipant);
     const localId = localParticipant?.id;

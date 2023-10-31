@@ -1,28 +1,30 @@
-/* eslint-disable lines-around-comment */
-import { Theme } from '@mui/material';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSelector } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
 
-// @ts-ignore
-import { Avatar } from '../../../../../base/avatar';
+import Avatar from '../../../../../base/avatar/components/Avatar';
+import {
+    getButtonNotifyMode,
+    getParticipantMenuButtonsWithNotifyClick
+} from '../../../../../base/config/functions.web';
 import { isLocalParticipantModerator } from '../../../../../base/participants/functions';
 import ContextMenu from '../../../../../base/ui/components/web/ContextMenu';
 import ContextMenuItemGroup from '../../../../../base/ui/components/web/ContextMenuItemGroup';
 import { getBreakoutRooms } from '../../../../../breakout-rooms/functions';
+import { NOTIFY_CLICK_MODE } from '../../../../../toolbox/constants';
 import { showOverflowDrawer } from '../../../../../toolbox/functions.web';
-// @ts-ignore
 import SendToRoomButton from '../../../../../video-menu/components/web/SendToRoomButton';
+import { PARTICIPANT_MENU_BUTTONS as BUTTONS } from '../../../../../video-menu/constants';
 import { AVATAR_SIZE } from '../../../../constants';
 
 
-type Props = {
+interface IProps {
 
     /**
      * Room and participant jid reference.
      */
-    entity: {
+    entity?: {
         jid: string;
         participantName: string;
         room: any;
@@ -31,7 +33,7 @@ type Props = {
     /**
      * Target elements against which positioning calculations are made.
      */
-    offsetTarget: HTMLElement | undefined;
+    offsetTarget?: HTMLElement | null;
 
     /**
      * Callback for the mouse entering the component.
@@ -47,9 +49,9 @@ type Props = {
      * Callback for making a selection in the menu.
      */
     onSelect: (force?: any) => void;
-};
+}
 
-const useStyles = makeStyles()((theme: Theme) => {
+const useStyles = makeStyles()(theme => {
     return {
         text: {
             color: theme.palette.text02,
@@ -69,28 +71,47 @@ export const RoomParticipantContextMenu = ({
     onEnter,
     onLeave,
     onSelect
-}: Props) => {
+}: IProps) => {
     const { classes: styles } = useStyles();
     const { t } = useTranslation();
     const isLocalModerator = useSelector(isLocalParticipantModerator);
     const lowerMenu = useCallback(() => onSelect(true), [ onSelect ]);
     const rooms: Object = useSelector(getBreakoutRooms);
     const overflowDrawer = useSelector(showOverflowDrawer);
+    const buttonsWithNotifyClick = useSelector(getParticipantMenuButtonsWithNotifyClick);
+
+    const notifyClick = useCallback(
+        (buttonKey: string, participantId?: string) => {
+            const notifyMode = getButtonNotifyMode(buttonKey, buttonsWithNotifyClick);
+
+            if (!notifyMode) {
+                return;
+            }
+
+            APP.API.notifyParticipantMenuButtonClicked(
+                buttonKey,
+                participantId,
+                notifyMode === NOTIFY_CLICK_MODE.PREVENT_AND_NOTIFY
+            );
+        }, [ buttonsWithNotifyClick, getButtonNotifyMode ]);
 
     const breakoutRoomsButtons = useMemo(() => Object.values(rooms || {}).map((room: any) => {
         if (room.id !== entity?.room?.id) {
             return (<SendToRoomButton
                 key = { room.id }
+                // eslint-disable-next-line react/jsx-no-bind
+                notifyClick = { () => notifyClick(BUTTONS.SEND_PARTICIPANT_TO_ROOM, entity?.jid) }
+                notifyMode = { getButtonNotifyMode(BUTTONS.SEND_PARTICIPANT_TO_ROOM, buttonsWithNotifyClick) }
                 onClick = { lowerMenu }
-                participantID = { entity?.jid }
+                participantID = { entity?.jid ?? '' }
                 room = { room } />);
         }
 
         return null;
     })
-.filter(Boolean), [ entity, rooms ]);
+    .filter(Boolean), [ entity, rooms ]);
 
-    return isLocalModerator && (
+    return isLocalModerator ? (
         <ContextMenu
             entity = { entity }
             isDrawerOpen = { Boolean(entity) }
@@ -107,6 +128,7 @@ export const RoomParticipantContextMenu = ({
                         size = { AVATAR_SIZE } />,
                     text: entity?.participantName
                 } ] } />}
+
             <ContextMenuItemGroup>
                 <div className = { styles.text }>
                     {t('breakoutRooms.actions.sendToBreakoutRoom')}
@@ -114,5 +136,5 @@ export const RoomParticipantContextMenu = ({
                 {breakoutRoomsButtons}
             </ContextMenuItemGroup>
         </ContextMenu>
-    );
+    ) : null;
 };

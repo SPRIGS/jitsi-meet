@@ -1,5 +1,10 @@
-import { CONFERENCE_JOINED, CONFERENCE_LEFT, SET_PASSWORD } from '../base/conference/actionTypes';
-import { Participant } from '../base/participants/types';
+import {
+    CONFERENCE_FAILED,
+    CONFERENCE_JOINED,
+    CONFERENCE_LEFT,
+    SET_PASSWORD
+} from '../base/conference/actionTypes';
+import { JitsiConferenceErrors } from '../base/lib-jitsi-meet';
 import ReducerRegistry from '../base/redux/ReducerRegistry';
 
 import {
@@ -12,8 +17,10 @@ import {
     SET_LOBBY_VISIBILITY,
     SET_PASSWORD_JOIN_FAILED
 } from './actionTypes';
+import { IKnockingParticipant } from './types';
 
 const DEFAULT_STATE = {
+    isDisplayNameRequiredError: false,
     knocking: false,
     knockingParticipants: [],
     lobbyEnabled: false,
@@ -21,13 +28,15 @@ const DEFAULT_STATE = {
     passwordJoinFailed: false
 };
 
-interface KnockingParticipant extends Participant {
-    chattingWithModerator?: string;
-}
-
 export interface ILobbyState {
+
+    /**
+     * A conference error when we tried to join into a room with no display name
+     * when lobby is enabled in the room.
+     */
+    isDisplayNameRequiredError: boolean;
     knocking: boolean;
-    knockingParticipants: KnockingParticipant[];
+    knockingParticipants: IKnockingParticipant[];
     lobbyEnabled: boolean;
     lobbyVisible: boolean;
     passwordJoinFailed: boolean;
@@ -43,6 +52,16 @@ export interface ILobbyState {
  */
 ReducerRegistry.register<ILobbyState>('features/lobby', (state = DEFAULT_STATE, action): ILobbyState => {
     switch (action.type) {
+    case CONFERENCE_FAILED: {
+        if (action.error.name === JitsiConferenceErrors.DISPLAY_NAME_REQUIRED) {
+            return {
+                ...state,
+                isDisplayNameRequiredError: true
+            };
+        }
+
+        return state;
+    }
     case CONFERENCE_JOINED:
     case CONFERENCE_LEFT:
         return {
@@ -123,7 +142,7 @@ ReducerRegistry.register<ILobbyState>('features/lobby', (state = DEFAULT_STATE, 
  * @param {Object} state - The current Redux state of the feature.
  * @returns {Object}
  */
-function _knockingParticipantArrivedOrUpdated(participant: KnockingParticipant, state: ILobbyState) {
+function _knockingParticipantArrivedOrUpdated(participant: IKnockingParticipant, state: ILobbyState) {
     let existingParticipant = state.knockingParticipants.find(p => p.id === participant.id);
 
     existingParticipant = {

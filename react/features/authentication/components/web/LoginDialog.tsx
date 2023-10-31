@@ -1,34 +1,31 @@
-/* eslint-disable lines-around-comment */
 import React, { Component } from 'react';
 import { WithTranslation } from 'react-i18next';
+import { connect as reduxConnect } from 'react-redux';
 
-// @ts-ignore
-import { connect } from '../../../../../connection';
-import { IState, IStore } from '../../../app/types';
+import { IReduxState, IStore } from '../../../app/types';
+import { IJitsiConference } from '../../../base/conference/reducer';
 import { IConfig } from '../../../base/config/configType';
 import { toJid } from '../../../base/connection/functions';
-// @ts-ignore
-import { Dialog } from '../../../base/dialog';
 import { translate, translateToHTML } from '../../../base/i18n/functions';
 import { JitsiConnectionErrors } from '../../../base/lib-jitsi-meet';
-import { connect as reduxConnect } from '../../../base/redux/functions';
+import Dialog from '../../../base/ui/components/web/Dialog';
 import Input from '../../../base/ui/components/web/Input';
+import { joinConference } from '../../../prejoin/actions.web';
 import {
     authenticateAndUpgradeRole,
     cancelLogin
-    // @ts-ignore
 } from '../../actions.web';
 
 /**
  * The type of the React {@code Component} props of {@link LoginDialog}.
  */
-interface Props extends WithTranslation {
+interface IProps extends WithTranslation {
 
     /**
      * {@link JitsiConference} That needs authentication - will hold a valid
      * value in XMPP login + guest access mode.
      */
-    _conference: Object;
+    _conference?: IJitsiConference;
 
     /**
      * The server hosts specified in the global config.
@@ -49,17 +46,12 @@ interface Props extends WithTranslation {
      * The progress in the floating range between 0 and 1 of the authenticating
      * and upgrading the role of the local participant/user.
      */
-    _progress: number;
+    _progress?: number;
 
     /**
      * Redux store dispatch method.
      */
     dispatch: IStore['dispatch'];
-
-    /**
-     * Invoked when username and password are submitted.
-     */
-    onSuccess: Function;
 
     /**
      * Conference room name.
@@ -70,12 +62,7 @@ interface Props extends WithTranslation {
 /**
  * The type of the React {@code Component} state of {@link LoginDialog}.
  */
-type State = {
-
-    /**
-     * Authentication process starts before joining the conference room.
-     */
-    loginStarted: boolean;
+interface IState {
 
     /**
      * The user entered password for the conference.
@@ -86,26 +73,25 @@ type State = {
      * The user entered local participant name.
      */
     username: string;
-};
+}
 
 /**
  * Component that renders the login in conference dialog.
  *
  *  @returns {React$Element<any>}
  */
-class LoginDialog extends Component<Props, State> {
+class LoginDialog extends Component<IProps, IState> {
     /**
      * Initializes a new {@code LoginDialog} instance.
      *
      * @inheritdoc
      */
-    constructor(props: Props) {
+    constructor(props: IProps) {
         super(props);
 
         this.state = {
             username: '',
-            password: '',
-            loginStarted: false
+            password: ''
         };
 
         this._onCancelLogin = this._onCancelLogin.bind(this);
@@ -137,8 +123,6 @@ class LoginDialog extends Component<Props, State> {
         const {
             _conference: conference,
             _configHosts: configHosts,
-            roomName,
-            onSuccess,
             dispatch
         } = this.props;
         const { password, username } = this.state;
@@ -150,19 +134,9 @@ class LoginDialog extends Component<Props, State> {
         if (conference) {
             dispatch(authenticateAndUpgradeRole(jid, password, conference));
         } else {
-            this.setState({
-                loginStarted: true
-            });
-
-            connect(jid, password, roomName)
-                .then((connection: any) => {
-                    onSuccess?.(connection);
-                })
-                .catch(() => {
-                    this.setState({
-                        loginStarted: false
-                    });
-                });
+            // dispatch(connect(jid, password));
+            // FIXME: Workaround for the web version. To be removed once we get rid of conference.js
+            dispatch(joinConference(undefined, false, jid, password));
         }
     }
 
@@ -205,11 +179,11 @@ class LoginDialog extends Component<Props, State> {
             t
         } = this.props;
         const { username, password } = this.state;
-        const messageOptions: any = {};
+        const messageOptions: { msg?: string; } = {};
         let messageKey;
 
         if (progress && progress < 1) {
-            messageKey = t('connection.FETCH_SESSION_ID');
+            messageKey = 'connection.FETCH_SESSION_ID';
         } else if (error) {
             const { name } = error;
 
@@ -220,14 +194,14 @@ class LoginDialog extends Component<Props, State> {
                     && credentials.jid === toJid(username, configHosts ?? { authdomain: '',
                         domain: '' })
                     && credentials.password === password) {
-                    messageKey = t('dialog.incorrectPassword');
+                    messageKey = 'dialog.incorrectPassword';
                 }
             } else if (name) {
-                messageKey = t('dialog.connectErrorWithMsg');
+                messageKey = 'dialog.connectErrorWithMsg';
                 messageOptions.msg = `${name} ${error.message}`;
             }
         } else if (connecting) {
-            messageKey = t('connection.CONNECTING');
+            messageKey = 'connection.CONNECTING';
         }
 
         if (messageKey) {
@@ -251,25 +225,25 @@ class LoginDialog extends Component<Props, State> {
             _connecting: connecting,
             t
         } = this.props;
-        const { password, loginStarted, username } = this.state;
+        const { password, username } = this.state;
 
         return (
             <Dialog
-                disableBlanketClickDismiss = { true }
-                hideCloseIconButton = { true }
-                okDisabled = {
-                    connecting
-                    || loginStarted
-                    || !password
-                    || !username
-                }
-                okKey = { t('dialog.login') }
+                disableAutoHideOnSubmit = { true }
+                disableBackdropClose = { true }
+                hideCloseButton = { true }
+                ok = {{
+                    disabled: connecting
+                        || !password
+                        || !username,
+                    translationKey: 'dialog.login'
+                }}
                 onCancel = { this._onCancelLogin }
                 onSubmit = { this._onLogin }
-                titleKey = { t('dialog.authenticationRequired') }
-                width = { 'small' }>
+                titleKey = { t('dialog.authenticationRequired') }>
                 <Input
                     autoFocus = { true }
+                    id = 'login-dialog-username'
                     label = { t('dialog.user') }
                     name = 'username'
                     onChange = { this._onUsernameChange }
@@ -278,6 +252,8 @@ class LoginDialog extends Component<Props, State> {
                     value = { username } />
                 <br />
                 <Input
+                    className = 'dialog-bottom-margin'
+                    id = 'login-dialog-password'
                     label = { t('dialog.userPassword') }
                     name = 'password'
                     onChange = { this._onPasswordChange }
@@ -296,9 +272,9 @@ class LoginDialog extends Component<Props, State> {
  *
  * @param {Object} state - The Redux state.
  * @private
- * @returns {Props}
+ * @returns {IProps}
  */
-function mapStateToProps(state: IState) {
+function mapStateToProps(state: IReduxState) {
     const {
         error: authenticateAndUpgradeRoleError,
         progress,
@@ -314,7 +290,7 @@ function mapStateToProps(state: IState) {
     return {
         _conference: authRequired || conference,
         _configHosts: configHosts,
-        _connecting: connecting || thenableWithCancel,
+        _connecting: Boolean(connecting) || Boolean(thenableWithCancel),
         _error: connectionError || authenticateAndUpgradeRoleError,
         _progress: progress
     };
